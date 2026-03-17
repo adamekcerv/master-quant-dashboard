@@ -8,7 +8,7 @@ API_TOKEN = os.environ.get("API_TOKEN", "fallback-secret")
 
 # In-memory storage for latest state
 state = {
-    "portfolio": {"value": "0", "pnl": "0", "btc": "0"},
+    "portfolio": {"value": "10000", "pnl": "0", "btc": "0"},
     "market": {"price": "Waiting...", "rsi": "0", "regime": "SCANNING"},
     "logs": "System initialized. Waiting for first bot pulse..."
 }
@@ -24,9 +24,10 @@ HTML_TEMPLATE = """
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', Courier, monospace; }
         .box { background-color: #0a0a0a; border: 1px solid #00ff41; color: #00ff41; border-radius: 0; }
         .title { color: #00ff41 !important; text-transform: uppercase; letter-spacing: 2px; }
-        pre { background: #000; color: #00ff41; border: 1px solid #00ff41; border-radius: 0; white-space: pre-wrap; }
+        pre { background: #000; color: #00ff41; border: 1px solid #00ff41; border-radius: 0; white-space: pre-wrap; font-size: 0.85rem; }
         .glitch { animation: glitch 1s linear infinite; }
         @keyframes glitch { 2%, 64% { transform: translate(2px,0) skew(0deg); } 4%, 60% { transform: translate(-2px,0) skew(0deg); } 62% { transform: translate(0,0) skew(5deg); } }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
     </style>
     <meta http-equiv="refresh" content="30">
 </head>
@@ -40,17 +41,17 @@ HTML_TEMPLATE = """
                 <div class="box">
                     <h2 class="title is-4">System Status</h2>
                     <p>Mode: [STRICT_PAPER]</p>
-                    <p>Portfolio: ${{ state.portfolio.value }}</p>
-                    <p>Unrealized PnL: <span style="color: {% if state.portfolio.pnl|float >= 0 %}#00ff41{% else %}#ff0000{% endif %};">{{ state.portfolio.pnl }} USD</span></p>
-                    <p>BTC Held: {{ state.portfolio.btc }}</p>
+                    <p>Portfolio: <span class="stat-value">${{ state.portfolio.value }}</span></p>
+                    <p>Unrealized PnL: <span class="stat-value" style="color: {% if state.portfolio.pnl|float >= 0 %}#00ff41{% else %}#ff0000{% endif %};">{{ state.portfolio.pnl }} USD</span></p>
+                    <p>BTC Held: <span class="stat-value">{{ state.portfolio.btc }}</span></p>
                 </div>
             </div>
             <div class="column is-8">
                 <div class="box">
                     <h2 class="title is-4">Trading Signals</h2>
-                    <p>Regime: [{{ state.market.regime }}]</p>
-                    <p>BTC/USD Price: ${{ state.market.price }}</p>
-                    <p>RSI (14): {{ state.market.rsi }}</p>
+                    <p>Regime: <span class="stat-value">[{{ state.market.regime }}]</span></p>
+                    <p>BTC/USD Price: <span class="stat-value">${{ state.market.price }}</span></p>
+                    <p>RSI (14): <span class="stat-value">{{ state.market.rsi }}</span></p>
                 </div>
             </div>
         </div>
