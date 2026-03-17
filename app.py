@@ -1,8 +1,17 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, request, jsonify
 import os
-import requests
 
 app = Flask(__name__)
+
+# Security Token
+API_TOKEN = os.environ.get("API_TOKEN", "fallback-secret")
+
+# In-memory storage for latest state
+state = {
+    "portfolio": {"value": "0", "pnl": "0", "btc": "0"},
+    "market": {"price": "Waiting...", "rsi": "0", "regime": "SCANNING"},
+    "logs": "System initialized. Waiting for first bot pulse..."
+}
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -15,13 +24,11 @@ HTML_TEMPLATE = """
         body { background-color: #050505; color: #00ff41; font-family: 'Courier New', Courier, monospace; }
         .box { background-color: #0a0a0a; border: 1px solid #00ff41; color: #00ff41; border-radius: 0; }
         .title { color: #00ff41 !important; text-transform: uppercase; letter-spacing: 2px; }
-        .tag { border-radius: 0; font-weight: bold; }
-        .is-profit { background-color: #003300; color: #00ff41; border: 1px solid #00ff41; }
-        .is-loss { background-color: #330000; color: #ff0000; border: 1px solid #ff0000; }
-        pre { background: #000; color: #00ff41; border: 1px solid #00ff41; border-radius: 0; }
+        pre { background: #000; color: #00ff41; border: 1px solid #00ff41; border-radius: 0; white-space: pre-wrap; }
         .glitch { animation: glitch 1s linear infinite; }
         @keyframes glitch { 2%, 64% { transform: translate(2px,0) skew(0deg); } 4%, 60% { transform: translate(-2px,0) skew(0deg); } 62% { transform: translate(0,0) skew(5deg); } }
     </style>
+    <meta http-equiv="refresh" content="30">
 </head>
 <body class="p-6">
     <div class="container">
@@ -33,28 +40,24 @@ HTML_TEMPLATE = """
                 <div class="box">
                     <h2 class="title is-4">System Status</h2>
                     <p>Mode: [STRICT_PAPER]</p>
-                    <p>Uptime: Active</p>
-                    <p>Target: BTC/USD</p>
+                    <p>Portfolio: ${{ state.portfolio.value }}</p>
+                    <p>Unrealized PnL: <span style="color: {% if state.portfolio.pnl|float >= 0 %}#00ff41{% else %}#ff0000{% endif %};">{{ state.portfolio.pnl }} USD</span></p>
+                    <p>BTC Held: {{ state.portfolio.btc }}</p>
                 </div>
             </div>
             <div class="column is-8">
                 <div class="box">
                     <h2 class="title is-4">Trading Signals</h2>
-                    <p>Regime: [TRENDING_BULL]</p>
-                    <p>Score: 8/10</p>
-                    <p>Logic: EMA12 > EMA26 > SMA50</p>
+                    <p>Regime: [{{ state.market.regime }}]</p>
+                    <p>BTC/USD Price: ${{ state.market.price }}</p>
+                    <p>RSI (14): {{ state.market.rsi }}</p>
                 </div>
             </div>
         </div>
 
         <div class="box">
-            <h2 class="title is-4">Terminal Output</h2>
-            <pre>
-[2026-03-17 08:42] SYSTEM_INIT: Paper account initialized ($10,000)
-[2026-03-17 08:43] ORDER_EXEC: BUY 0.01 BTC @ $74,428
-[2026-03-17 08:50] MONITOR: Current PnL -1.94 USD
-[2026-03-17 09:00] SCAN: Signal strength High (RSI 58)
-            </pre>
+            <h2 class="title is-4">Terminal Output (Last Update)</h2>
+            <pre>{{ state.logs }}</pre>
         </div>
     </div>
 </body>
@@ -63,7 +66,20 @@ HTML_TEMPLATE = """
 
 @app.route('/')
 def index():
-    return render_template_string(HTML_TEMPLATE)
+    return render_template_string(HTML_TEMPLATE, state=state)
+
+@app.route('/update', methods=['POST'])
+def update():
+    token = request.headers.get("Authorization")
+    if token != f"Bearer {API_TOKEN}":
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    state["portfolio"] = data.get("portfolio", state["portfolio"])
+    state["market"] = data.get("market", state["market"])
+    state["logs"] = data.get("logs", state["logs"])
+    
+    return jsonify({"status": "success"}), 200
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
